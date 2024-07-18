@@ -1,6 +1,6 @@
 library(maftools)
-
-blca.maf <-read.delim("/Users/lidiayung/project/resource/perturbations/blca_tcga_pan_can_atlas_2018/data_mutations.txt", sep = '\t')
+setwd('/Users/lidiayung/PhD_project/project_UCD_blca/blca_DATA/blca_DATA_tcga_pan_can_atlas_2018')
+blca.maf <-read.delim("data_mutations.txt", sep = '\t')
 
 
 clin_raw <- read.delim("data_clinical_patient.txt", sep = '\t',skip = 4)
@@ -8,8 +8,7 @@ clin_raw <- read.delim("data_clinical_patient.txt", sep = '\t',skip = 4)
 table(clin_raw$AJCC_PATHOLOGIC_TUMOR_STAGE)
 #Filtered by stages of interest
 
-clin_raw <- clin_raw[clin_raw$AJCC_PATHOLOGIC_TUMOR_STAGE %in% c("STAGE II","STAGE III","STAGE IIIA", "STAGE IIIB",
-                                                                 "STAGE IIIC","STAGE IV"), ]
+clin_raw <- clin_raw[clin_raw$AJCC_PATHOLOGIC_TUMOR_STAGE %in% c("STAGE II","STAGE III","STAGE IV"), ]
 #double check
 table(clin_raw$AJCC_PATHOLOGIC_TUMOR_STAGE)
 
@@ -27,7 +26,17 @@ RNA <- as.data.frame(t(RNA_raw[-1:-2]))
 #retrieve RNAs of interest
 RNA <- RNA[str_sub(row.names(RNA), end = -4) %in% row.names(clin_raw), ]
 
+Remove'TCGA-GV-A3QG'
+###testing
 
+# Align clinical data:
+clin <- clin_raw[row.names(clin_raw)%in% str_sub(row.names(RNA), end = -4),]
+RNA <- RNA[str_sub(row.names(RNA), end = -4) %in% row.names(clin_raw), ]
+
+clin$Tumor_Sample_Barcode= [str_sub(row.names(RNA), end = -4) %in% row.names(clin_raw), ]
+clin$Tumor_Sample_Barcode =paste0(rownames(clin),'-01')
+
+###
 clin <- clin_raw[str_sub(row.names(RNA), end = -4),]
 
 clin$Tumor_Sample_Barcode <- paste(clin$PATIENT_ID, "-01", sep = "")
@@ -38,6 +47,7 @@ clin$PATIENT_ID<-clin$Tumor_Sample_Barcode
 
 blca <-read.maf(maf=blca.maf,clinicalData= clin)
   
+matching_barcodes <- intersect(blca$Tumor_Sample_Barcode, clin$Tumor_Sample_Barcode)
 
 
 maf_data_view <- blca@data
