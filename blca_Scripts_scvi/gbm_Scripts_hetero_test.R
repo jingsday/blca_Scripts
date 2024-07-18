@@ -4,6 +4,7 @@ library(ggplot2)
 library(gridExtra)
 library(Matrix)
 library(stringr)
+library(tidyverse)
 
 #Part I: Read data, merge, create Seurat object and preprocessing(if provided raw)
 
