@@ -4,9 +4,9 @@ library(dplyr)
 library(ggplot2)
 library(stringr)
 
-setwd("/Users/lidiayung/project/resource/perturbations/blca_tcga_pan_can_atlas_2018")
+setwd("/Users/lidiayung/PhD_project/project_UCD_blca/blca_DATA/blca_DATA_tcga_pan_can_atlas_2018")
 
-
+table(clin_raw$AJCC_PATHOLOGIC_TUMOR_STAGE)
 
 clin_raw <- read.delim("data_clinical_patient.txt", sep = '\t',skip = 4)
 
@@ -33,10 +33,12 @@ RNA <- RNA[str_sub(row.names(RNA), end = -4) %in% row.names(clin_raw), ]
 
 clin <- clin_raw[str_sub(row.names(RNA), end = -4),]
 
-
 # create a survival object consisting of times & censoring
 surv_obj <- Surv(time = clin$OS_MONTHS, 
                  event = clin$OS_STATUS=="1:DECEASED")
+
+table(clin$OS_MONTHS)
+clin[is.na(clin$OS_MONTHS),]
 
 #surv_obj 
 
@@ -101,7 +103,6 @@ MAPK_df = cbind(MAPK = path_df$MAPK, PI3K = path_df$PI3K,
 corrplot(cor(MAPK_df), type = "upper", order = "hclust",tl.col = "black", tl.srt = 45)
 
 cor(MAPK_df)
-
 
 
 
@@ -199,7 +200,7 @@ plot(cvfit)
 
 #rna data log transformed
 
-rna_raw <- read.delim("/Users/lidiayung/project/resource/perturbations/blca_tcga_pan_can_atlas_2018/data_mrna_seq_v2_rsem.txt",check.names = FALSE)
+rna_raw <- read.delim("data_mrna_seq_v2_rsem.txt",check.names = FALSE)
 
 rna_raw[is.na(rna_raw)] <- 0
 rna_raw <- rna_raw[rna_raw$Hugo_Symbol!='',]
@@ -216,32 +217,61 @@ rna_log2 <- apply(rna, c(1, 2), function(value) log2(value + 1))
 
 max(rna_log2)
 min(rna_log2)
+library(openxlsx)
+stvs <- read.xlsx('/Users/lidiayung/PhD_project/project_UCD_blca/blca_OUTPUT/blca_OUTPUT_depmap/blca_OUTPUT_depmap_stvs.xlsx')
+
+head(colnames(rna_log2))
+head(stvs$Gene)
+
+missing_genes <- setdiff(stvs$Gene, colnames(rna_log2))
+if(length(missing_genes) > 0) {
+  warning("The following genes are not found in rna_log2 columns: ", paste(missing_genes, collapse = ", "))
+}
+
+cols<-intersect(stvs$Gene, colnames(rna_log2))
+# Subset the matrix
+rna_log2_subset <- rna_log2[, cols, drop = FALSE]
 
 #dot product
-rna_log2_subset <- rna_log2[, coef_data$variable]
+stvs <- stvs[!stvs$Gene %in% missing_genes,]
+
+
+rna_log2_subset <- rna_log2[, stvs$cell_lines]
 coef_data_subset <-coef_data[,-1]
 
-result <- rna_log2_subset %*% coef_data_subset
 
 
-clin$DPD_prognosis <- result[str_sub(row.names(result), end = -4) %in% row.names(clin), ]
+# Perform the dot product
+dot_product_result <- rna_log2_subset %*% stvs$blca_onc
+head(stvs$cell_lines)
+
+result <- rna_log2_subset %*% stvs$blca_inv
+head(dot_product_result)
+
+clin$DPD_prognosis <- dot_product_result[str_sub(row.names(dot_product_result), end = -4) %in% row.names(clin), ]
+
+
+table(clin$AJCC_PATHOLOGIC_TUMOR_STAGE)
 
 #write.csv(clin$DPD_prognosis, file = "DPD_prognosis.csv", row.names = FALSE)
 
-clin$outcome <- ifelse(clin$DPD_prognosis > 0, "positive",
-                       ifelse(clin$DPD_prognosis == 0, "0", "negative"))
+clin$outcome <- ifelse(clin$DPD_prognosis > 10, "positive",
+                       ifelse(clin$DPD_prognosis == 10, "0", "negative"))
 
 ### hazard ratio
-fit2.coxph <- coxph(Surv(time = clin$OS_MONTHS, 
-                        event = clin$OS_STATUS=="1:DECEASED") ~ outcome+SEX+AJCC_PATHOLOGIC_TUMOR_STAGE, data = clin)
-ggforest(fit2.coxph, data = clin)
+clin_nice <- clin
+fit2.coxph <- coxph(Surv(time = clin_nice$OS_MONTHS, 
+                        event = clin_nice$OS_STATUS=="1:DECEASED") ~ dot_product_result+SEX+AJCC_PATHOLOGIC_TUMOR_STAGE, data = clin_nice)
 
+ggforest(fit2.coxph, data = clin_nice,)
+ggsave('hr_dotproduct.svg',dpi=72)
+ggsave('hr_dotproduct2.svg',dpi=300)
 
 
 ##kaplan M curve
 fit <- survfit(Surv(time = clin$OS_MONTHS, 
                     event = clin$OS_STATUS=="1:DECEASED") ~ outcome, data = clin)
-ggsurvplot(fit, data = clin, pval = TRUE,xlab = "Month", ylab = "Overall survival")
+ggsurvplot(fit, data = clin, pval = TRUE,xlab = "Month", ylab = "Overall survival",risk.table=TRUE)
 
 
 
