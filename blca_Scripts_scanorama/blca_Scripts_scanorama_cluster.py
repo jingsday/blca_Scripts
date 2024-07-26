@@ -86,8 +86,6 @@ adatas_cor_full = adatas_cor[0].concatenate(adatas_cor[1:], batch_key='source', 
 
 adatas_cor_full
 
-os.listdir('/home/jyang/Phd_project/project_UCD_blca/blca_OUTPUT/blca_OUTPUT_scanorama')
-
 adatas_cor_full.write_h5ad('/home/jyang/Phd_project/project_UCD_blca/blca_OUTPUT/blca_OUTPUT_scanorama_cor_full.h5ad')
 
 sc.pp.neighbors(adatas_cor_full, use_rep="X_scanorama")
