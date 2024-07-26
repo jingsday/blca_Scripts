@@ -90,28 +90,56 @@ adatas_cor_full.write_h5ad('/home/jyang/Phd_project/project_UCD_blca/blca_OUTPUT
 
 sc.pp.neighbors(adatas_cor_full, use_rep="X_scanorama")
 sc.tl.umap(adatas_cor_full)
+
+#Leiden resolution 0.1
 sc.tl.leiden(
     adatas_cor_full, key_added="leiden01", n_iterations=2, flavor="igraph", directed=False,resolution=0.1
 )
 
 sc.pl.umap(
-    adatas_cor_full, color=["leiden01", "source"], palette=sc.pl.palettes.default_20
+    adatas_cor_full, color=["leiden01", "source"], palette=sc.pl.palettes.default_20,save='blca_scanorama_umap_leiden01_source.svg'
 )
 sc.tl.rank_genes_groups(adatas_cor_full, "leiden01", method="t-test")
-sc.pl.rank_genes_groups(adatas_cor_full, n_genes=25, sharey=False)
+sc.pl.rank_genes_groups(adatas_cor_full, n_genes=25, sharey=False,save='blca_scanorama_markers_leiden01.svg')
 
 
+sc.pl.umap(adatas_cor_full,color=['leiden01','Upk2','Upk1a','Upk1b','Cdh1','Upk3a','Upk3b','Ivl'],save='blca_scanorama_umap_leiden01_markers.svg')
+sc.pl.violin(adatas_cor_full,['Upk2','Upk1a','Upk1b','Cdh1','Upk3a','Upk3b','Ivl'],groupby='leiden01',save='blca_scanorama_violin_leiden01_markers.svg')
+
+#Leiden resolution 0.05
 sc.tl.leiden(
     adatas_cor_full, key_added="leiden005", n_iterations=2, flavor="igraph", directed=False,resolution=0.05
 )
 
 sc.pl.umap(
-    adatas_cor_full, color=["leiden005", "source"], palette=sc.pl.palettes.default_20
+    adatas_cor_full, color=["leiden005", "source"], palette=sc.pl.palettes.default_20,save='blca_scanorama_umap_leiden005_source.svg'
 )
+
 sc.tl.rank_genes_groups(adatas_cor_full, "leiden005", method="t-test")
-sc.pl.rank_genes_groups(adatas_cor_full, n_genes=25, sharey=False)
+sc.pl.rank_genes_groups(adatas_cor_full, n_genes=25, sharey=False,save='blca_scanorama_markers_leiden005.svg')
 
+sc.pl.umap(adatas_cor_full,color=['leiden005','Upk2','Upk1a','Upk1b','Cdh1','Upk3a','Upk3b','Ivl'],save='blca_scanorama_umap_leiden005_markers.svg')
+sc.pl.violin(adatas_cor_full,['Upk2','Upk1a','Upk1b','Cdh1','Upk3a','Upk3b','Ivl'],groupby='leiden005',save='blca_scanorama_violin_leiden005_markers.svg')
 
-sc.pl.umap(adatas_cor_full,color=['clusters','Upk2','Upk1a','Upk1b','Cdh1','Upk3a','Upk3b','Ivl'])
+#Leiden resolution 0.01
+sc.tl.leiden(
+    adatas_cor_full, key_added="leiden001", n_iterations=2, flavor="igraph", directed=False,resolution=0.01
+)
 
-sc.pl.violin(adatas_cor_full,['Upk2','Upk1a','Upk1b','Cdh1','Upk3a','Upk3b','Ivl'],groupby='clusters')
+sc.pl.umap(
+    adatas_cor_full, color=["leiden001", "source"], palette=sc.pl.palettes.default_20,save='blca_scanorama_umap_leiden001.svg'
+)
+
+sc.tl.rank_genes_groups(adatas_cor_full, "leiden001", method="t-test")
+sc.pl.rank_genes_groups(adatas_cor_full, n_genes=25, sharey=False,save='blca_scanorama_markers_leiden001.svg')
+
+sc.pl.umap(adatas_cor_full,color=['leiden001','Upk2','Upk1a','Upk1b','Cdh1','Upk3a','Upk3b','Ivl'],save='blca_scanorama_umap_leiden001_markers.svg')
+sc.pl.violin(adatas_cor_full,['Upk2','Upk1a','Upk1b','Cdh1','Upk3a','Upk3b','Ivl'],groupby='leiden001',save='blca_scanorama_violin_leiden001_markers.svg')
+
+#cluster counts 
+
+print(adatas_cor_full.obs['leiden01'].value_counts(ascending=False))
+
+print(adatas_cor_full.obs['leiden005'].value_counts(ascending=False))
+
+print(adatas_cor_full.obs['leiden001'].value_counts(ascending=False))
