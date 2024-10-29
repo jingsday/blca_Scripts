@@ -6,7 +6,6 @@ library(stringr)
 
 setwd("/Users/lidiayung/PhD_project/project_UCD_blca/blca_DATA/blca_DATA_tcga_pan_can_atlas_2018")
 
-table(clin_raw$AJCC_PATHOLOGIC_TUMOR_STAGE)
 
 clin_raw <- read.delim("data_clinical_patient.txt", sep = '\t',skip = 4)
 
@@ -113,7 +112,7 @@ clin_filt <- clin[clin$OS_MONTHS > 0,]
 
 RNA_filt <- RNA[clin$OS_MONTHS > 0,]
 
-gene_lincs <- read.csv("/Users/lidiayung/project/resource/perturbations/00_outputs_2020_/gl_lincs.csv")
+gene_lincs <- read.csv("/Users/lidiayung/PhD_project/project_UCD_blca/blca_DATA/blca_DATA_tcga_pan_can_atlas_2018/gl_lincs.csv")
 
 RNA_lincs <- RNA_filt[, colnames(RNA_filt) %in% gene_lincs$gene]
 
