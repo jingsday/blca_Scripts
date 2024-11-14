@@ -19,8 +19,6 @@ table(clin_raw$AJCC_PATHOLOGIC_TUMOR_STAGE)
 rownames(clin_raw) <- clin_raw$PATIENT_ID
 length(clin_raw$PATIENT_ID)
 
-clin <- clin_raw[str_sub(row.names(RNA), end = -4),]
-clin <- clin[!is.na(clin$OS_MONTHS) & !is.na(clin$OS_STATUS), ]
 RNA_raw <- read.delim("data_mrna_seq_v2_rsem_zscores_ref_all_samples.txt",check.names = FALSE)
 RNA_raw[is.na(RNA_raw)] <- 0
 RNA_raw <- RNA_raw[RNA_raw$Hugo_Symbol!='',]
@@ -31,6 +29,8 @@ RNA <- as.data.frame(t(RNA_raw[-1:-2]))
 #retrieve RNAs of interest
 RNA <- RNA[str_sub(row.names(RNA), end = -4) %in% row.names(clin), ]
 
+clin <- clin_raw[str_sub(row.names(RNA), end = -4),]
+clin <- clin[!is.na(clin$OS_MONTHS) & !is.na(clin$OS_STATUS), ]
 
 
 # create a survival object consisting of times & censoring
@@ -44,18 +44,20 @@ ggsurvplot(fit, data = clin, xlab = "Month", ylab = "Overall survival",surv.medi
 
 fit_stage <- survfit(surv_obj ~ clin$AJCC_PATHOLOGIC_TUMOR_STAGE, data = clin)
 ggsurvplot(fit_stage,data = clin,pval=T)
-
-ggsurvplot(
+t <- ggsurvplot(
   fit_stage,
   data = clin,
-  pval = T,ylab='Month',
+  pval = TRUE,
+  xlab = 'Month',
   legend.title = "STAGES",
-  legend.labs = c("STAGE=II","STAGE=III","STAGE IV"),  
-  legend.size = 1.5,  
-  legend="top",risk.table = TRUE,
+  legend.labs = c("STAGE=II", "STAGE=III", "STAGE IV"),
+  legend.size = 1.5,
+  legend = "top",
+  risk.table = TRUE
 )
 
-#ggsave("~/Downloads/survival_plot.png", dpi=300, plot = t$table,width = 4, height = 3, device = "png")
+# Saving the plot
+ggsave("~/Downloads/survival_plot.png", dpi = 300, plot = t, width = 4, height = 3, device = "png")
 
 
 # fit multivariate model (COX proportional hazard) 
@@ -154,7 +156,7 @@ library("glmnet")
 library("penalized")
 
 
-fit_glm <- glmnet(RNA_lincs,surv_filt,family="cox") #, alpha = 1, standardize = TRUE, maxit = 1000
+fit_glm <- glmnet(RNA_lincs,surv_filt,family="cox")#, alpha = 1) #, alpha = 1, standardize = TRUE, maxit = 1000
 print(fit_glm)
 # analysing results
 
