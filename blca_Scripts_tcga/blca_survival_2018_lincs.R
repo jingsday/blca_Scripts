@@ -6,7 +6,6 @@ library(stringr)
 
 setwd("/Users/lidiayung/PhD_project/project_UCD_blca/blca_DATA/blca_DATA_tcga_pan_can_atlas_2018")
 
-table(clin_raw$AJCC_PATHOLOGIC_TUMOR_STAGE)
 
 clin_raw <- read.delim("data_clinical_patient.txt", sep = '\t',skip = 4)
 
@@ -28,22 +27,37 @@ rownames(RNA_raw) <- RNA_raw$Hugo_Symbol
 RNA <- as.data.frame(t(RNA_raw[-1:-2]))
 
 #retrieve RNAs of interest
-RNA <- RNA[str_sub(row.names(RNA), end = -4) %in% row.names(clin_raw), ]
-
+RNA <- RNA[str_sub(row.names(RNA), end = -4) %in% row.names(clin), ]
 
 clin <- clin_raw[str_sub(row.names(RNA), end = -4),]
+clin <- clin[!is.na(clin$OS_MONTHS) & !is.na(clin$OS_STATUS), ]
+
 
 # create a survival object consisting of times & censoring
 surv_obj <- Surv(time = clin$OS_MONTHS, 
-                 event = clin$OS_STATUS=="1:DECEASED")
-
-table(clin$OS_MONTHS)
-clin[is.na(clin$OS_MONTHS),]
-
+                 event = clin$OS_STATUS=="1:DECEASED",)
 #surv_obj 
 
 fit <- survfit(surv_obj ~ 1, data = clin)
 ggsurvplot(fit, data = clin, xlab = "Month", ylab = "Overall survival",surv.median.line = "hv")
+
+
+fit_stage <- survfit(surv_obj ~ clin$AJCC_PATHOLOGIC_TUMOR_STAGE, data = clin)
+ggsurvplot(fit_stage,data = clin,pval=T)
+t <- ggsurvplot(
+  fit_stage,
+  data = clin,
+  pval = TRUE,
+  xlab = 'Month',
+  legend.title = "STAGES",
+  legend.labs = c("STAGE=II", "STAGE=III", "STAGE IV"),
+  legend.size = 1.5,
+  legend = "top",
+  risk.table = TRUE
+)
+
+# Saving the plot
+ggsave("~/Downloads/survival_plot.png", dpi = 300, plot = t, width = 4, height = 3, device = "png")
 
 
 # fit multivariate model (COX proportional hazard) 
@@ -113,7 +127,7 @@ clin_filt <- clin[clin$OS_MONTHS > 0,]
 
 RNA_filt <- RNA[clin$OS_MONTHS > 0,]
 
-gene_lincs <- read.csv("/Users/lidiayung/project/resource/perturbations/00_outputs_2020_/gl_lincs.csv")
+gene_lincs <- read.csv("/Users/lidiayung/PhD_project/project_UCD_blca/blca_DATA/blca_DATA_tcga_pan_can_atlas_2018/gl_lincs.csv")
 
 RNA_lincs <- RNA_filt[, colnames(RNA_filt) %in% gene_lincs$gene]
 
@@ -142,7 +156,7 @@ library("glmnet")
 library("penalized")
 
 
-fit_glm <- glmnet(RNA_lincs,surv_filt,family="cox") #, alpha = 1, standardize = TRUE, maxit = 1000
+fit_glm <- glmnet(RNA_lincs,surv_filt,family="cox")#, alpha = 1) #, alpha = 1, standardize = TRUE, maxit = 1000
 print(fit_glm)
 # analysing results
 
