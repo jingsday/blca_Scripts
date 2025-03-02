@@ -9,42 +9,49 @@ library(sctransform)
 
 #Part I: Read data, merge, create Seurat object and preprocessing(if provided raw)
 
-setwd('/home/jing/resource/murine_blca')
-outdir <- '/home/jing/resource/murine_blca/scripts/'
+setwd('/home/jing/Phd_project/project_UCD_blca/blca_DATA/blca_DATA_mouse_GSE174182_RAW')
+#outdir <- '/home/jing/resource/murine_blca/scripts/'
 
 # get data location
-dirs <- list.files(path = '/home/jing/resource/murine_blca/GSE174182_RAW', recursive = F, full.names = F)
+# dirs <- list.files(path = '/home/jing/Phd_project/project_UCD_blca/blca_DATA/blca_DATA_mouse_GSE174182_RAW', recursive = F, full.names = F)
 
-
-names_list <- c()  # Create an empty list to store the names
-for (x in dirs) {
-  name <- unique(str_sub(x, end = 20))  # Extract the name
-  names_list <- c(names_list, name)     # Append the name to the list
-}
-names_list <-unique(names_list)
-
-names_list <- names_list[names_list != "GSM5288674_Sample-11"]
+# 
+# names_list <- c()  # Create an empty list to store the names
+# for (x in dirs) {
+#   name <- unique(str_sub(x, end = 20))  # Extract the name
+#   names_list <- c(names_list, name)     # Append the name to the list
+# }
+# names_list <-unique(names_list)
+# 
+# names_list <- names_list[names_list != "GSM5288674_Sample-11"]
 
 # Add "GSM5288674_Sample-11_" to the list
-names_list <- c(names_list, "GSM5288674_Sample-11_")
+names_list <- c("GSM5288668_Sample-3_", "GSM5288669_Sample-4_","GSM5288670_Sample-5_" ,
+                "GSM5288671_Sample-6_", "GSM5288672_Sample-7_", "GSM5288673_Sample-8_",
+                "GSM5288674_Sample-11_")
 
 
 for (name in names_list) {
-  cts <- ReadMtx(mtx = paste0('GSE174182_RAW/',name,'filtered_matrix.mtx.gz'),
-                 features = paste0('GSE174182_RAW/',name,'filtered_features.tsv.gz'),
-                 cells = paste0('GSE174182_RAW/',name,'filtered_barcodes.tsv.gz'))
+  cts <- ReadMtx(mtx = paste0(name,'filtered_matrix.mtx.gz'),
+                 features = paste0(name,'filtered_features.tsv.gz'),
+                 cells = paste0(name,'filtered_barcodes.tsv.gz'))
   
   # create seurat objects
-  assign(str_sub(name, end = 10), CreateSeuratObject(counts = cts))
+  assign(str_sub(name, end = 10), CreateSeuratObject(counts = cts)
 }
 
-
+for (i in c(GSM5288668,GSM5288669,GSM5288670,GSM5288671,GSM5288672,GSM5288673,GSM5288674)){
+  
+  i[["percent.mt"]] <- PercentageFeatureSet(i, pattern = "^MT-")
+  i <- subset(i, subset = nFeature_RNA > 200 & nFeature_RNA < 8000 & percent.mt < 25)
+}
 
 ls()
 
 merged_seurat <- merge(GSM5288668, y = c(GSM5288669,GSM5288670, GSM5288671, GSM5288672, GSM5288673, GSM5288674),
-                       add.cell.ids = ls()[3:9],
+                       add.cell.ids = ls()[2:8],
                        project = 'BLCA')
+
 
 # create a sample column
 merged_seurat$sample <-rownames(merged_seurat@meta.data)
@@ -54,6 +61,8 @@ merged_seurat@meta.data <- separate(merged_seurat@meta.data, col = 'sample', int
                                     sep = '_')
 
 obj.list <- SplitObject(merged_seurat, split.by = 'Sample')
+
+table(merged_seurat@meta.data$Sample)
 
 #Part II: SCT intergration and save files for furthur analysis
 
@@ -68,39 +77,42 @@ seurat.integrated <- IntegrateData(anchorset = anchors, normalization.method = "
 #Save intergrated data 
 #saveRDS(seurat.integrated, file = "murine_intergration_sct.rds")
 
-#Barcodes and samples of interest
-cluster_0_cells <- which(seurat.integrated@meta.data$seurat_clusters == 0)
-
-# Subset seurat.integrated to include only cells belonging to cluster 0
-seurat_integrated_cluster_0 <- seurat.integrated[cluster_0_cells, ]
-
-
-sct_murine_cl00 <- subset(sct_murine, subset = seurat_clusters == 0)
-saveRDS(sct_murine_cl00, file = "sct_murine_cl00.rds")
-#sct_murine_cl00[['SCT]] for processing ultimately not here
+# #Barcodes and samples of interest
+# cluster_0_cells <- which(seurat.integrated@meta.data$seurat_clusters == 0)
+# 
+# # Subset seurat.integrated to include only cells belonging to cluster 0
+# seurat_integrated_cluster_0 <- seurat.integrated[cluster_0_cells, ]
+# 
+# 
+# sct_murine_cl00 <- subset(sct_murine, subset = seurat_clusters == 0)
+# saveRDS(sct_murine_cl00, file = "sct_murine_cl00.rds")
+# #sct_murine_cl00[['SCT]] for processing ultimately not here
 
 #Downstream clustering, visualization and find markers
 DefaultAssay(seurat.integrated) <- "integrated"
 # Run the standard workflow for visualization and clustering
-seurat.integrated <- ScaleData(seurat.integrated, verbose = FALSE)
+#seurat.integrated <- ScaleData(seurat.integrated, verbose = FALSE)
 
 seurat.integrated <- RunPCA(seurat.integrated, verbose = FALSE)
-seurat.integrated <- RunUMAP(seurat.integrated, reduction = "pca", dims = 1:30)
+seurat.integrated <- RunUMAP(seurat.integrated, reduction = "pca", dims = 1:50)
 
 seurat.integrated <- FindNeighbors(seurat.integrated, dims = 1:30, verbose = FALSE)
-seurat.integrated <- FindClusters(seurat.integrated, resolution = 0.5)
+seurat.integrated <- FindClusters(seurat.integrated, resolution = 0.5,random.seed = 4)
 
 
-head(seurat.integrated@meta.data@seurat)
+table(seurat.integrated@meta.data$seurat_clusters)
+
+markers <- c('Cdh1', 'Upk1a', 'Upk1b', 'Upk2', 'Upk3a', 'Ivl')
+DotPlot(seurat.integrated, features = markers) + RotatedAxis()
 
 #visualization
-
-p1 <- DimPlot(seurat.integrated, reduction = "umap")
-p2 <- DimPlot(seurat.integrated, reduction = "umap", group.by = "Sample", 
+p2 <- DimPlot(seurat.integrated, reduction = "umap")
+p1 <- DimPlot(seurat.integrated, reduction = "umap", group.by = "Sample", 
               repel = TRUE,cols=c('red','green','blue','yellow','brown','orange','purple'))
-
+svg()
 p1 + p2
 combined <- p1+p2
+
 
 #Visualize marker genes as violin plots.
 DefaultAssay(seurat.integrated) <- "RNA"
