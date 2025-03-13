@@ -37,21 +37,15 @@ for (name in names_list) {
                  cells = paste0(name,'filtered_barcodes.tsv.gz'))
   
   # create seurat objects
-  assign(str_sub(name, end = 10), CreateSeuratObject(counts = cts)
-}
-
-for (i in c(GSM5288668,GSM5288669,GSM5288670,GSM5288671,GSM5288672,GSM5288673,GSM5288674)){
-  
-  i[["percent.mt"]] <- PercentageFeatureSet(i, pattern = "^MT-")
-  i <- subset(i, subset = nFeature_RNA > 200 & nFeature_RNA < 8000 & percent.mt < 25)
+  assign(str_sub(name, end = 10),CreateSeuratObject(counts = cts))
 }
 
 ls()
-
-merged_seurat <- merge(GSM5288668, y = c(GSM5288669,GSM5288670, GSM5288671, GSM5288672, GSM5288673, GSM5288674),
+merged_seurat <- merge(GSM5288668, y = c(GSM5288669,GSM5288670, GSM5288671, GSM5288672,GSM5288673, GSM5288674),
                        add.cell.ids = ls()[2:8],
                        project = 'BLCA')
-
+#before it was Mt
+merged_seurat$mitoPercent <- PercentageFeatureSet(merged_seurat, pattern='^mt-')
 
 # create a sample column
 merged_seurat$sample <-rownames(merged_seurat@meta.data)
@@ -60,9 +54,17 @@ merged_seurat$sample <-rownames(merged_seurat@meta.data)
 merged_seurat@meta.data <- separate(merged_seurat@meta.data, col = 'sample', into = c('Sample', 'Barcode'), 
                                     sep = '_')
 
-obj.list <- SplitObject(merged_seurat, split.by = 'Sample')
+#Murine cells were filtered to retain higher quality cells (>200 &<8000 uniquely identified genes
+#<25% of reads mapped to mitochondrial genes),
+merged_seurat_filtered <- subset(merged_seurat, subset = nFeature_RNA > 200 &
+                                   nFeature_RNA < 8000 &
+                                   mitoPercent < 25)
 
-table(merged_seurat@meta.data$Sample)
+
+
+obj.list <- SplitObject(merged_seurat_filtered, split.by = 'Sample')
+
+table(merged_seurat_filtered@meta.data$Sample)
 
 #Part II: SCT intergration and save files for furthur analysis
 
@@ -94,13 +96,18 @@ DefaultAssay(seurat.integrated) <- "integrated"
 #seurat.integrated <- ScaleData(seurat.integrated, verbose = FALSE)
 
 seurat.integrated <- RunPCA(seurat.integrated, verbose = FALSE)
-seurat.integrated <- RunUMAP(seurat.integrated, reduction = "pca", dims = 1:50)
+seurat.integrated <- RunUMAP(seurat.integrated,  dims = 1:50)
 
 seurat.integrated <- FindNeighbors(seurat.integrated, dims = 1:30, verbose = FALSE)
-seurat.integrated <- FindClusters(seurat.integrated, resolution = 0.5,random.seed = 4)
+seurat.integrated <- FindClusters(seurat.integrated, resolution = 0.05,random.seed =1)
 
+# 
+# seurat.integrated <- RunUMAP(seurat.integrated,  dims = 1:50)
+# 
+# seurat.integrated <- FindNeighbors(seurat.integrated, dims = 1:30, verbose = FALSE)
+# seurat.integrated <- FindClusters(seurat.integrated, resolution = 0.1,random.seed =10,)
 
-table(seurat.integrated@meta.data$seurat_clusters)
+table(seurat.integrated@meta.data$seurat_clusters,seurat.integrated@meta.data$Sample)
 
 markers <- c('Cdh1', 'Upk1a', 'Upk1b', 'Upk2', 'Upk3a', 'Ivl')
 DotPlot(seurat.integrated, features = markers) + RotatedAxis()
